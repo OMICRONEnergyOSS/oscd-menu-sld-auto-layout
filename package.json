@@ -1,0 +1,91 @@
+{
+  "name": "@omicronenergy/oscd-menu-sld-auto-layout",
+  "description": "OpenSCD menu plugin that generates a zero-line SLD layout for existing Substation sections",
+  "license": "Apache-2.0",
+  "author": "OMICRON electronics GmbH",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/oscd-menu-sld-auto-layout.js",
+    "./oscd-menu-sld-auto-layout.js": "./dist/oscd-menu-sld-auto-layout.js"
+  },
+  "scripts": {
+    "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" \"**/*.md\" --check --ignore-path .gitignore",
+    "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" \"**/*.md\" --write --ignore-path .gitignore",
+    "compile": "rimraf --glob 'dist/!(__snapshots__)' && tsc",
+    "build": "npm run compile && rollup -c rollup.config.js",
+    "test": "npm run compile && wtr --config web-test-runner.config.mjs",
+    "test:watch": "npm run compile && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch --config web-test-runner.config.mjs\"",
+    "start": "npm run compile && wds"
+  },
+  "dependencies": {
+    "@openscd/oscd-api": "^0.1.5",
+    "@openscd/scl-lib": "^2.0.0",
+    "lit": "^3.3.2"
+  },
+  "devDependencies": {
+    "@omicronenergy/oscd-editor": "^1.5.0",
+    "@omicronenergy/oscd-editor-source": "^0.0.3",
+    "@omicronenergy/oscd-shell": "^0.0.9",
+    "@open-wc/eslint-config": "^8.0.2",
+    "@open-wc/testing": "^3.1.6",
+    "@rollup/plugin-node-resolve": "^13.0.6",
+    "@rollup/plugin-typescript": "^11.1.2",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.33.0",
+    "@web/dev-server": "^0.1.34",
+    "@web/test-runner": "^0.14.0",
+    "@webcomponents/scoped-custom-element-registry": "^0.0.10",
+    "concurrently": "^5.3.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.4.1",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.60.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "typescript": "^4.5.2"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "@open-wc",
+      "prettier"
+    ],
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "rules": {
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "_.*",
+          "varsIgnorePattern": "_.*"
+        }
+      ],
+      "import/no-unresolved": "off",
+      "import/no-extraneous-dependencies": [
+        "error",
+        {
+          "devDependencies": [
+            "**/*.spec.ts"
+          ]
+        }
+      ],
+      "import/extensions": [
+        "error",
+        "always",
+        {
+          "ignorePackages": true
+        }
+      ]
+    }
+  },
+  "prettier": {
+    "singleQuote": true,
+    "arrowParens": "avoid"
+  }
+}
