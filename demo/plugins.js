@@ -18,6 +18,16 @@ export const plugins = {
   ],
   editor: [
     {
+      name: 'SLD',
+      translations: {
+        de: 'SLD',
+      },
+      icon: 'add_box',
+      active: true,
+      requireDoc: true,
+      src: 'https://omicronenergyoss.github.io/oscd-editor-sld/oscd-editor-sld.js',
+    },
+    {
       name: 'Source Editor',
       translations: { de: 'Source Editor' },
       icon: 'code',

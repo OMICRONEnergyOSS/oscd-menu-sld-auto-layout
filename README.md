@@ -48,4 +48,4 @@ npm test
 npm run start
 ```
 
-The local demo preloads a sample SCL file and exposes this menu plugin together with the Source Editor so the generated layout data can be inspected directly.
+The local demo preloads a sample SCL file and exposes this menu plugin together with the deployed `oscd-editor-sld` editor and the Source Editor so the generated layout can be inspected graphically and directly in XML.
