@@ -19,10 +19,14 @@ export function iedReferences(root: XMLDocument | Element): Element[] {
 }
 
 export function resolveIed(reference: Element): Element | null {
-  if (!isIedReferenceElement(reference)) return null;
+  if (!isIedReferenceElement(reference)) {
+    return null;
+  }
 
   const referenceIdentity = reference.getAttributeNS(sldNs, 'id');
-  if (!referenceIdentity) return null;
+  if (!referenceIdentity) {
+    return null;
+  }
 
   return (
     Array.from(reference.ownerDocument.querySelectorAll(':root > IED')).find(
@@ -32,8 +36,9 @@ export function resolveIed(reference: Element): Element | null {
 }
 
 function sldAttributes(element: Element): Element | null {
-  if (isIedReferenceElement(element))
+  if (isIedReferenceElement(element)) {
     return element.querySelector(':scope > SLDAttributes');
+  }
 
   return (
     element.querySelector(`:scope > Private[type="${privType}"] > SLDAttributes`) ??

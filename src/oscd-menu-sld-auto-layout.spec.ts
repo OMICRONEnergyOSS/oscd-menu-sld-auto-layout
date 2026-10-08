@@ -1,13 +1,12 @@
-/* eslint-disable no-unused-expressions */
 import '@webcomponents/scoped-custom-element-registry';
 import { fixture, expect } from '@open-wc/testing';
 import { html } from 'lit';
 
-import { XMLEditor } from '@omicronenergy/oscd-editor';
-import { EditEventV2 } from '@openscd/oscd-api';
+import { XMLEditor } from '@openscd/oscd-editor';
+import type { EditEventV2 } from '@openscd/oscd-api';
 
 import OscdMenuSldAutoLayout from './oscd-menu-sld-auto-layout.js';
-import { getSLDAttributes, iedReferences, resolveIed, sldNs } from './layout-util.js';
+import { getSLDAttributes, iedReferences, resolveIed, sldNs } from './foundation/layout-util.js';
 
 const zeroLineDocString = `<?xml version="1.0" encoding="UTF-8"?>
 <SCL xmlns="http://www.iec.ch/61850/2003/SCL" version="2007" revision="B">
@@ -90,8 +89,9 @@ const priorArtDocString = `<?xml version="1.0" encoding="UTF-8"?>
   <IED name="IED-CROSS"/>
 </SCL>`;
 
-if (!customElements.get('oscd-menu-sld-auto-layout'))
+if (!customElements.get('oscd-menu-sld-auto-layout')) {
   customElements.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
+}
 
 describe('Menu SLD auto layout', () => {
   let element: OscdMenuSldAutoLayout;

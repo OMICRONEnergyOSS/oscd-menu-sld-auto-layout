@@ -33,7 +33,9 @@ type ReferencePool = {
 
 function addUnique<K, V extends Element>(map: Map<K, V[]>, key: K, value: V) {
   const values = map.get(key) ?? [];
-  if (!values.includes(value)) values.push(value);
+  if (!values.includes(value)) {
+    values.push(value);
+  }
   map.set(key, values);
 }
 
@@ -174,7 +176,9 @@ function hasReferencedChildren(element: Element, iedName: string): boolean {
 }
 
 function hasReferencedPrimaryChildren(element: Element, iedName: string): boolean {
-  if (!['Substation', 'VoltageLevel'].includes(element.tagName)) return false;
+  if (!['Substation', 'VoltageLevel'].includes(element.tagName)) {
+    return false;
+  }
 
   return Array.from(element.children).some(
     child =>
@@ -205,14 +209,19 @@ function hasTheirs(element: Element, iedName: string): boolean {
 }
 
 function attachedIedsFor(element: Element, ieds: Element[]): Element[] {
-  const attached = ieds.filter(ied => {
+  const attached = ieds.filter((ied) => {
     const iedName = ied.getAttribute('name');
-    if (!iedName) return false;
+    if (!iedName) {
+      return false;
+    }
 
-    if (element.tagName === 'SCL')
+    if (element.tagName === 'SCL') {
       return !hasOurs(element, iedName) || hasReferencedChildren(element, iedName);
+    }
 
-    if (hasTheirs(element, iedName)) return false;
+    if (hasTheirs(element, iedName)) {
+      return false;
+    }
 
     return (
       isReferencedItself(element, iedName) ||
@@ -231,14 +240,14 @@ function classifyIeds(substation: Element): ScopedIeds {
   const substationIeds = attachedIedsFor(substation, ieds);
   const placedIds = new Set(substationIeds.map(ied => String(identity(ied))));
 
-  directChildrenByTag(substation, 'VoltageLevel').forEach(voltageLevel => {
+  directChildrenByTag(substation, 'VoltageLevel').forEach((voltageLevel) => {
     const attachedToVoltageLevel = attachedIedsFor(voltageLevel, ieds);
     if (attachedToVoltageLevel.length) {
       voltageLevelIeds.set(voltageLevel, attachedToVoltageLevel);
       attachedToVoltageLevel.forEach(ied => placedIds.add(String(identity(ied))));
     }
 
-    directChildrenByTag(voltageLevel, 'Bay').forEach(bay => {
+    directChildrenByTag(voltageLevel, 'Bay').forEach((bay) => {
       const attachedToBay = attachedIedsFor(bay, ieds);
       if (attachedToBay.length) {
         bayIeds.set(bay, attachedToBay);
@@ -247,24 +256,33 @@ function classifyIeds(substation: Element): ScopedIeds {
     });
   });
 
-  iedReferences(substation).forEach(reference => {
+  iedReferences(substation).forEach((reference) => {
     const ied = resolveIed(reference);
-    if (!ied) return;
+    if (!ied) {
+      return;
+    }
 
     const id = String(identity(ied));
-    if (placedIds.has(id)) return;
+    if (placedIds.has(id)) {
+      return;
+    }
 
     const container =
       reference.parentElement?.tagName === 'Private'
         ? reference.parentElement.parentElement
         : null;
 
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
-    if (container.tagName === 'Bay') addUnique(bayIeds, container, ied);
-    else if (container.tagName === 'VoltageLevel')
+    if (container.tagName === 'Bay') {
+      addUnique(bayIeds, container, ied);
+    } else if (container.tagName === 'VoltageLevel') {
       addUnique(voltageLevelIeds, container, ied);
-    else substationIeds.push(ied);
+    } else {
+      substationIeds.push(ied);
+    }
 
     placedIds.add(id);
   });
@@ -286,9 +304,11 @@ function classifyIeds(substation: Element): ScopedIeds {
 function createReferencePool(substation: Element): ReferencePool {
   const byIdentity = new Map<string, Element[]>();
 
-  iedReferences(substation).forEach(reference => {
+  iedReferences(substation).forEach((reference) => {
     const ied = resolveIed(reference);
-    if (!ied) return;
+    if (!ied) {
+      return;
+    }
 
     const id = String(identity(ied));
     const references = byIdentity.get(id) ?? [];
@@ -303,7 +323,9 @@ function claimReference(pool: ReferencePool, ied: Element): Element | undefined 
   const id = String(identity(ied));
   const references = pool.byIdentity.get(id) ?? [];
   const reference = references.find(candidate => !pool.used.has(candidate));
-  if (reference) pool.used.add(reference);
+  if (reference) {
+    pool.used.add(reference);
+  }
   return reference;
 }
 
@@ -318,7 +340,9 @@ class EditBuilder {
   ) {}
 
   ensureNamespaceDeclaration() {
-    if (this.doc.documentElement.lookupPrefix(sldNs)) return;
+    if (this.doc.documentElement.lookupPrefix(sldNs)) {
+      return;
+    }
 
     this.edits.push({
       element: this.doc.documentElement,
@@ -332,7 +356,9 @@ class EditBuilder {
 
   private getOrCreatePrivate(container: Element) {
     const cached = this.privateCache.get(container);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     const existingPrivate = layoutPrivate(container);
     if (existingPrivate) {
@@ -404,8 +430,11 @@ class EditBuilder {
       applyDetachedAttributes(sldAttributes, this.nsp, attributes);
       reference.appendChild(sldAttributes);
 
-      if (isNew) privateElement.appendChild(reference);
-      else this.edits.push({ parent: privateElement, node: reference, reference: null });
+      if (isNew) {
+        privateElement.appendChild(reference);
+      } else {
+        this.edits.push({ parent: privateElement, node: reference, reference: null });
+      }
 
       return;
     }
@@ -422,8 +451,9 @@ class EditBuilder {
         oldPrivate?.tagName === 'Private' &&
         oldPrivate.getAttribute('type') === privType &&
         oldPrivate.childElementCount === 1
-      )
+      ) {
         this.edits.push({ node: oldPrivate });
+      }
     }
 
     const existingSldAttributes = directChildByLocalName(existingReference, 'SLDAttributes');
@@ -448,7 +478,9 @@ function layoutIedRow(
   builder: EditBuilder,
   pool: ReferencePool
 ) {
-  if (!ieds.length) return { rightEdge: x + 1, height: 0 };
+  if (!ieds.length) {
+    return { rightEdge: x + 1, height: 0 };
+  }
 
   let rightEdge = x + 1;
   ieds.forEach((ied, index) => {
@@ -467,7 +499,9 @@ function layoutEquipmentGrid(
   builder: EditBuilder
 ) {
   const equipments = directChildrenByTag(container, 'ConductingEquipment', 'PowerTransformer');
-  if (!equipments.length) return { rightEdge: x + 1, height: 0 };
+  if (!equipments.length) {
+    return { rightEdge: x + 1, height: 0 };
+  }
 
   let rightEdge = x + 1;
   equipments.forEach((equipment, index) => {
@@ -549,7 +583,7 @@ function layoutVoltageLevel(
   }
 
   let bayX = x + 1;
-  directChildrenByTag(voltageLevel, 'Bay').forEach(bay => {
+  directChildrenByTag(voltageLevel, 'Bay').forEach((bay) => {
     const box = layoutBay(
       bay,
       bayX,
@@ -602,7 +636,7 @@ function layoutSubstation(
     bottomEdge = Math.max(bottomEdge, cursorY);
   }
 
-  directChildrenByTag(substation, 'VoltageLevel').forEach(voltageLevel => {
+  directChildrenByTag(substation, 'VoltageLevel').forEach((voltageLevel) => {
     const box = layoutVoltageLevel(voltageLevel, 1, cursorY, scopedIeds, builder, pool);
     cursorY = box.bottomEdge + 1;
     rightEdge = Math.max(rightEdge, box.rightEdge);
@@ -626,14 +660,16 @@ function layoutSubstation(
 
 export function createZeroLineLayoutEdits(doc: XMLDocument): EditV2[] {
   const substations = Array.from(doc.querySelectorAll(':root > Substation'));
-  if (!substations.length) return [];
+  if (!substations.length) {
+    return [];
+  }
 
   const nsp = doc.documentElement.lookupPrefix(sldNs) ?? 'eosld';
   const builder = new EditBuilder(doc, nsp);
 
   builder.ensureNamespaceDeclaration();
 
-  substations.forEach(substation => {
+  substations.forEach((substation) => {
     layoutSubstation(substation, builder, createReferencePool(substation));
   });
 

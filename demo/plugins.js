@@ -1,11 +1,38 @@
-import OscdEditorSource from '@omicronenergy/oscd-editor-source';
-import OscdMenuSldAutoLayout from '../dist/oscd-menu-sld-auto-layout.js';
-
-customElements.define('oscd-editor-source', OscdEditorSource);
-customElements.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
-
 export const plugins = {
   menu: [
+    {
+      name: 'File',
+      translations: { de: 'Datei' },
+      icon: 'folder',
+      plugins: [
+        {
+          name: 'Open',
+          translations: { de: 'Öffnen' },
+          icon: 'description',
+          tagName: 'oscd-menu-open',
+        },
+        {
+          name: 'New File',
+          translations: { de: 'Neue Datei' },
+          icon: 'note_add',
+          tagName: 'oscd-menu-new',
+        },
+        {
+          name: 'Save File',
+          translations: { de: 'Datei speichern' },
+          icon: 'save',
+          requireDoc: true,
+          tagName: 'oscd-menu-save',
+        },
+        {
+          name: 'Close File',
+          translations: { de: 'Datei schließen' },
+          icon: 'close',
+          requireDoc: true,
+          tagName: 'oscd-menu-file-close',
+        },
+      ],
+    },
     {
       name: 'Auto layout SLD',
       translations: {
@@ -25,7 +52,9 @@ export const plugins = {
       icon: 'add_box',
       active: true,
       requireDoc: true,
-      src: 'https://omicronenergyoss.github.io/oscd-editor-sld/oscd-editor-sld.js',
+      // tagName: 'oscd-editor-sld',
+      // We need to point to the temp deployment of the sld editor which still uses the old coordinate system. 
+      src: 'https://stee-re.github.io/oscd-editor-sld-temp/oscd-editor-sld.js',
     },
     {
       name: 'Source Editor',

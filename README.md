@@ -23,7 +23,8 @@ npm install @omicronenergy/oscd-menu-sld-auto-layout
 ```js
 import OscdMenuSldAutoLayout from '@omicronenergy/oscd-menu-sld-auto-layout';
 
-customElements.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
+const shell = document.querySelector('oscd-shell');
+shell.registry.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
 
 export const plugins = {
   menu: [
@@ -38,14 +39,32 @@ export const plugins = {
   editor: [],
   background: [],
 };
+
+shell.plugins = plugins;
 ```
+
+The current shell uses a scoped registry. Register tagged plugins in
+`shell.registry`, not the global `customElements` registry.
 
 ## Development
 
 ```sh
-npm run compile
+npm install
+npm run build
 npm test
 npm run start
 ```
+
+Source lives in `src/`, with layout logic in `src/foundation/` and the menu
+integration spec beside the entry point. Build, lint, test, and
+development-server commands use `@omicronenergy/oscd-tooling`; browser tests
+use Playwright. `npm run compile` remains an alias for `npm run build`.
+
+`npm install` installs shared Git hooks through the `prepare` script and sets
+this repository's `core.hooksPath` to `.githooks`.
+
+`npm run build` compiles modules into `dist/`. `npm run bundle` creates the
+browser-deployable plugin and bundled demo; `npm run start:bundle` serves that
+bundled demo.
 
 The local demo preloads a sample SCL file and exposes this menu plugin together with the deployed `oscd-editor-sld` editor and the Source Editor so the generated layout can be inspected graphically and directly in XML.

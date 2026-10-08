@@ -12,39 +12,50 @@
 <script type="module">
   import '@webcomponents/scoped-custom-element-registry';
   import '@omicronenergy/oscd-shell/oscd-shell.js';
+  import OscdEditorSource from '@omicronenergy/oscd-editor-source';
+  // import OscdEditorSld from '@omicronenergy/oscd-editor-sld';
+  import OscdMenuSldAutoLayout from '../dist/oscd-menu-sld-auto-layout.js';
+  import {
+  OscdMenuFileClose,
+  OscdMenuOpen,
+  OscdMenuSave,
+  OscdMenuNew,
+} from '@omicronenergy/oscd-menu-commons';
   import { plugins } from './plugins.js';
 
-  const editor = document.querySelector('oscd-shell');
-  editor.plugins = plugins;
+  const oscdShell = document.querySelector('oscd-shell');
+  oscdShell.registry.define('oscd-menu-open', OscdMenuOpen);
+  oscdShell.registry.define('oscd-menu-save', OscdMenuSave);
+  oscdShell.registry.define('oscd-menu-new', OscdMenuNew);
+  oscdShell.registry.define('oscd-menu-file-close', OscdMenuFileClose);
+  oscdShell.registry.define('oscd-editor-source', OscdEditorSource);
+  //oscdShell.registry.define('oscd-editor-sld', OscdEditorSld);
+  oscdShell.registry.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
+  oscdShell.plugins = plugins;
 
-  const params = new URL(document.location).searchParams;
-  for (const [name, value] of params) editor.setAttribute(name, value);
+const params = new URL(document.location).searchParams;
+for (const [name, value] of params) {
+  oscdShell.setAttribute(name, value);
+}
 
-  const sample = await fetch('sample.scd').then(response => response.text());
-  editor.docs = {
-    'sample.scd': new DOMParser().parseFromString(sample, 'application/xml'),
+/* By default, don't load a file. If a file name is passed as a paramter,
+ * try load it. Super handy during development not having to repeatidly
+ * re-open a file */
+const docFile = params.get('doc');
+if (docFile) {
+  const sample = await fetch(docFile).then(r => r.text());
+  oscdShell.docs = {
+    [docFile]: new DOMParser().parseFromString(
+      sample,
+      'application/xml',
+    ),
   };
-  editor.docName = 'sample.scd';
+  oscdShell.docName = docFile;
+}
 </script>
 
 <style>
   * {
-    --oscd-theme-primary: #2aa198;
-    --oscd-theme-secondary: #6c71c4;
-    --oscd-theme-error: #dc322f;
-
-    --oscd-theme-base03: #002b36;
-    --oscd-theme-base02: #073642;
-    --oscd-theme-base01: #586e75;
-    --oscd-theme-base00: hsl(196, 13%, 45%);
-    --oscd-theme-base0: #839496;
-    --oscd-theme-base1: #93a1a1;
-    --oscd-theme-base2: #eee8d5;
-    --oscd-theme-base3: #fdf6e3;
-
-    --oscd-theme-text-font: 'Roboto';
-    --oscd-theme-icon-font: 'Material Symbols Outlined';
-
     margin: 0;
     padding: 0;
   }
