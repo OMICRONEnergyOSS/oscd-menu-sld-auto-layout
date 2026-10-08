@@ -52,9 +52,7 @@ export const plugins = {
       icon: 'add_box',
       active: true,
       requireDoc: true,
-      // tagName: 'oscd-editor-sld',
-      // We need to point to the temp deployment of the sld editor which still uses the old coordinate system. 
-      src: 'https://stee-re.github.io/oscd-editor-sld-temp/oscd-editor-sld.js',
+      tagName: 'oscd-editor-sld',
     },
     {
       name: 'Source Editor',

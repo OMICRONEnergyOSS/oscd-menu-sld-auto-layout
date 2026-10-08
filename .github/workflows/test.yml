@@ -1,0 +1,10 @@
+name: Unit Tests
+
+on: [workflow_dispatch, push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: OMICRONEnergyOSS/oscd-gh-workflows/.github/workflows/unit-tests.yml@main

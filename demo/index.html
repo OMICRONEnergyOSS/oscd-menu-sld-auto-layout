@@ -13,7 +13,7 @@
   import '@webcomponents/scoped-custom-element-registry';
   import '@omicronenergy/oscd-shell/oscd-shell.js';
   import OscdEditorSource from '@omicronenergy/oscd-editor-source';
-  // import OscdEditorSld from '@omicronenergy/oscd-editor-sld';
+  import OscdEditorSld from '@omicronenergy/oscd-editor-sld';
   import OscdMenuSldAutoLayout from '../dist/oscd-menu-sld-auto-layout.js';
   import {
   OscdMenuFileClose,
@@ -29,7 +29,7 @@
   oscdShell.registry.define('oscd-menu-new', OscdMenuNew);
   oscdShell.registry.define('oscd-menu-file-close', OscdMenuFileClose);
   oscdShell.registry.define('oscd-editor-source', OscdEditorSource);
-  //oscdShell.registry.define('oscd-editor-sld', OscdEditorSld);
+  oscdShell.registry.define('oscd-editor-sld', OscdEditorSld);
   oscdShell.registry.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
   oscdShell.plugins = plugins;
 

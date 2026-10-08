@@ -3,14 +3,45 @@
   "description": "OpenSCD menu plugin that generates a zero-line SLD layout for existing Substation sections",
   "license": "Apache-2.0",
   "author": "OMICRON electronics GmbH",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OMICRONEnergyOSS/oscd-menu-sld-auto-layout.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OMICRONEnergyOSS/oscd-menu-sld-auto-layout/issues"
+  },
+  "homepage": "https://omicronenergyoss.github.io/oscd-menu-sld-auto-layout/demo/",
+  "keywords": [
+    "OpenSCD",
+    "IEC61850",
+    "SCL",
+    "SLD"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.0.0",
   "type": "module",
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "!dist/**/*.spec.js",
+    "!dist/**/*.spec.d.ts",
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.d.ts",
+    "!dist/**/__snapshots__/**",
+    "!dist/demo/**",
+    "!dist/assets/**"
   ],
   "exports": {
-    ".": "./dist/oscd-menu-sld-auto-layout.js",
-    "./oscd-menu-sld-auto-layout.js": "./dist/oscd-menu-sld-auto-layout.js"
+    ".": {
+      "types": "./dist/oscd-menu-sld-auto-layout.d.ts",
+      "default": "./dist/oscd-menu-sld-auto-layout.js"
+    },
+    "./oscd-menu-sld-auto-layout.js": {
+      "types": "./dist/oscd-menu-sld-auto-layout.d.ts",
+      "default": "./dist/oscd-menu-sld-auto-layout.js"
+    }
   },
   "scripts": {
     "lint": "oscd lint",
@@ -23,6 +54,7 @@
     "start": "oscd start",
     "start:bundle": "oscd start-bundle",
     "updates": "oscd updates",
+    "deploy": "oscd bundle && oscd deploy",
     "prepare": "oscd install-hooks"
   },
   "dependencies": {
