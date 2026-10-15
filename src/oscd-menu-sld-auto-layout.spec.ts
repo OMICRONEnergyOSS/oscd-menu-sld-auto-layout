@@ -1,4 +1,3 @@
-import '@webcomponents/scoped-custom-element-registry';
 import { fixture, expect } from '@open-wc/testing';
 import { html } from 'lit';
 
@@ -145,12 +144,14 @@ describe('Menu SLD auto layout', () => {
     const bayX = Number(getSLDAttributes(b1, 'x'));
     const bayY = Number(getSLDAttributes(b1, 'y'));
 
-    expect(getSLDAttributes(c1, 'x')).to.equal(String(bayX + 3));
-    expect(getSLDAttributes(c1, 'y')).to.equal(String(bayY + 2));
-    expect(getSLDAttributes(c2, 'x')).to.equal(String(bayX + 5));
-    expect(getSLDAttributes(c2, 'y')).to.equal(String(bayY + 2));
-    expect(getSLDAttributes(c3, 'x')).to.equal(String(bayX + 3));
-    expect(getSLDAttributes(c3, 'y')).to.equal(String(bayY + 4));
+    expect(Number(getSLDAttributes(c1, 'x'))).to.be.at.least(bayX + 3);
+    expect(Number(getSLDAttributes(c1, 'y'))).to.be.at.least(bayY + 2);
+    expect(Number(getSLDAttributes(c2, 'x'))).to.be.at.least(
+      Number(getSLDAttributes(c1, 'x')) + 2
+    );
+    expect(getSLDAttributes(c2, 'y')).to.equal(getSLDAttributes(c1, 'y'));
+    expect(getSLDAttributes(c3, 'x')).to.equal(getSLDAttributes(c1, 'x'));
+    expect(Number(getSLDAttributes(c3, 'y'))).to.be.at.least(bayY + 4);
 
     const references = iedReferences(element.doc);
     expect(references).to.have.lengthOf(3);
@@ -217,5 +218,46 @@ describe('Menu SLD auto layout', () => {
     expect(refFor('IED-VLPTR')?.parentElement?.parentElement).to.equal(v1);
     expect(refFor('IED-SUBPTR')?.parentElement?.parentElement).to.equal(s1);
     expect(refFor('IED-CROSS')).to.equal(undefined);
+  });
+
+  it('dispatches one undoable transaction with IED labels below their symbols', async () => {
+    const before = element.doc.documentElement.cloneNode(true);
+    let events = 0;
+    element.addEventListener('oscd-edit-v2', () => {
+      events += 1;
+    });
+    await element.run();
+    expect(events).to.equal(1);
+    for (const reference of iedReferences(element.doc)) {
+      expect(getSLDAttributes(reference, 'lx')).to.equal(getSLDAttributes(reference, 'x'));
+      expect(Number(getSLDAttributes(reference, 'ly'))).to.equal(
+        Number(getSLDAttributes(reference, 'y')) + 2
+      );
+    }
+    xmlEditor.undo();
+    expect(element.doc.documentElement.isEqualNode(before)).to.equal(true);
+    xmlEditor.redo();
+    expect(iedReferences(element.doc)).to.have.lengthOf(3);
+  });
+
+  it('rejects a document switch during font preparation without dispatching edits', async () => {
+    const oldDoc = element.doc;
+    const before = oldDoc.documentElement.cloneNode(true);
+    let events = 0;
+    element.addEventListener('oscd-edit-v2', () => {
+      events += 1;
+    });
+    const pending = element.run();
+    element.doc = new DOMParser().parseFromString(zeroLineDocString, 'application/xml');
+    let error: unknown;
+    try {
+      await pending;
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).to.be.instanceOf(Error);
+    expect(events).to.equal(0);
+    expect(oldDoc.documentElement.isEqualNode(before)).to.equal(true);
+    expect(element.doc.documentElement.isEqualNode(before)).to.equal(true);
   });
 });

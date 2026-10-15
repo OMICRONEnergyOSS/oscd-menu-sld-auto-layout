@@ -9,8 +9,11 @@ import {
   sldNs,
   xmlnsNs,
 } from './layout-util.js';
+import { itemFootprint, labelWidth, layoutLabelOffset } from './layout-geometry.js';
 
-const bayWidth = 7;
+import type { MeasureLabel } from './layout-geometry.js';
+
+const minBayWidth = 7;
 const bayRowStart = 2;
 const rowStep = 2;
 const minContainerSize = 4;
@@ -101,12 +104,13 @@ function namespacedAttributesEdit(
   };
 }
 
-function iedLayoutAttributes(x: number, y: number): Record<string, string> {
+function iedLayoutAttributes(ied: Element, x: number, y: number): Record<string, string> {
+  const [labelX, labelY] = layoutLabelOffset(ied);
   return {
     x: x.toString(),
     y: y.toString(),
-    lx: (x + 1).toString(),
-    ly: (y + 1).toString(),
+    lx: (x + labelX).toString(),
+    ly: (y + labelY).toString(),
   };
 }
 
@@ -115,22 +119,13 @@ function equipmentLayoutAttributes(
   x: number,
   y: number
 ): Record<string, string> {
-  if (equipment.tagName === 'PowerTransformer') {
-    return {
-      x: x.toString(),
-      y: y.toString(),
-      rot: '0',
-      lx: (x + 1.5).toString(),
-      ly: y.toString(),
-    };
-  }
-
+  const [labelX, labelY] = layoutLabelOffset(equipment);
   return {
     x: x.toString(),
     y: y.toString(),
     rot: '0',
-    lx: (x + 1).toString(),
-    ly: (y + 1).toString(),
+    lx: (x + labelX).toString(),
+    ly: (y + labelY).toString(),
   };
 }
 
@@ -476,45 +471,61 @@ function layoutIedRow(
   x: number,
   y: number,
   builder: EditBuilder,
-  pool: ReferencePool
+  pool: ReferencePool,
+  measure: MeasureLabel
 ) {
   if (!ieds.length) {
     return { rightEdge: x + 1, height: 0 };
   }
 
   let rightEdge = x + 1;
-  ieds.forEach((ied, index) => {
-    const iedX = x + 1 + index * 2;
-    builder.placeIed(container, ied, iedLayoutAttributes(iedX, y), pool);
-    rightEdge = iedX + 1;
+  let height = 0;
+  ieds.forEach((ied) => {
+    const size = itemFootprint(ied, measure);
+    const iedX = rightEdge + size.offsetX;
+    builder.placeIed(container, ied, iedLayoutAttributes(ied, iedX, y + size.offsetY), pool);
+    rightEdge += size.width;
+    height = Math.max(height, size.height);
   });
 
-  return { rightEdge, height: 2 };
+  return { rightEdge, height };
 }
 
 function layoutEquipmentGrid(
   container: Element,
   x: number,
   y: number,
-  builder: EditBuilder
+  builder: EditBuilder,
+  measure: MeasureLabel
 ) {
   const equipments = directChildrenByTag(container, 'ConductingEquipment', 'PowerTransformer');
   if (!equipments.length) {
     return { rightEdge: x + 1, height: 0 };
   }
 
-  let rightEdge = x + 1;
+  const sizes = equipments.map(element => itemFootprint(element, measure));
+  const columnWidths = [0, 0];
+  const rowHeights: number[] = [];
+  sizes.forEach((size, index) => {
+    columnWidths[index % 2] = Math.max(columnWidths[index % 2], size.width);
+    const row = Math.floor(index / 2);
+    rowHeights[row] = Math.max(rowHeights[row] ?? rowStep, size.height);
+  });
+  let cursorY = y;
   equipments.forEach((equipment, index) => {
-    const equipmentX = x + 1 + (index % 2) * 2;
-    const equipmentY = y + Math.floor(index / 2) * rowStep;
+    const size = sizes[index];
+    const equipmentX = x + 1 + (index % 2) * columnWidths[0] + size.offsetX;
+    const equipmentY = cursorY + size.offsetY;
     builder.upsertLayoutAttributes(
       equipment,
       equipmentLayoutAttributes(equipment, equipmentX, equipmentY)
     );
-    rightEdge = Math.max(rightEdge, equipmentX + 1);
+    if (index % 2 === 1 || index === equipments.length - 1) {
+      cursorY += rowHeights[Math.floor(index / 2)];
+    }
   });
 
-  return { rightEdge, height: Math.ceil(equipments.length / 2) * rowStep };
+  return { rightEdge: x + 1 + columnWidths[0] + columnWidths[1], height: cursorY - y };
 }
 
 function layoutBay(
@@ -523,26 +534,47 @@ function layoutBay(
   y: number,
   ieds: Element[],
   builder: EditBuilder,
-  pool: ReferencePool
+  pool: ReferencePool,
+  measure: MeasureLabel
 ): Box {
   const equipment = directChildrenByTag(bay, 'ConductingEquipment', 'PowerTransformer');
   const rows = Math.max(1, ieds.length, Math.ceil(equipment.length / 2));
-  const height = rows * rowStep + 2;
+  const iedSizes = ieds.map(ied => itemFootprint(ied, measure));
+  const equipmentSizes = equipment.map(element => itemFootprint(element, measure));
+  let iedColumnWidth = 2;
+  let rowHeight = rowStep;
+  for (const size of iedSizes) {
+    iedColumnWidth = Math.max(iedColumnWidth, size.width);
+    rowHeight = Math.max(rowHeight, size.height);
+  }
+  const equipmentColumnWidths = [2, 2];
+  equipmentSizes.forEach((size, index) => {
+    equipmentColumnWidths[index % 2] = Math.max(equipmentColumnWidths[index % 2], size.width);
+    rowHeight = Math.max(rowHeight, size.height);
+  });
+  const width = Math.max(minBayWidth,
+    1 + iedColumnWidth + equipmentColumnWidths[0] + equipmentColumnWidths[1],
+    Math.ceil(labelWidth(bay, measure)) + 1);
+  const height = rows * rowHeight + 2;
 
-  builder.upsertLayoutAttributes(bay, containerLayoutAttributes(x, y, bayWidth, height));
+  builder.upsertLayoutAttributes(bay, containerLayoutAttributes(x, y, width, height));
 
   ieds.forEach((ied, index) => {
+    const size = iedSizes[index];
     builder.placeIed(
       bay,
       ied,
-      iedLayoutAttributes(x + 1, y + bayRowStart + index * rowStep),
+      iedLayoutAttributes(ied, x + 1 + size.offsetX,
+        y + bayRowStart + index * rowHeight + size.offsetY),
       pool
     );
   });
 
   equipment.forEach((element, index) => {
-    const elementX = x + 3 + (index % 2) * 2;
-    const elementY = y + bayRowStart + Math.floor(index / 2) * rowStep;
+    const size = equipmentSizes[index];
+    const elementX = x + 1 + iedColumnWidth +
+      (index % 2) * equipmentColumnWidths[0] + size.offsetX;
+    const elementY = y + bayRowStart + Math.floor(index / 2) * rowHeight + size.offsetY;
     builder.upsertLayoutAttributes(
       element,
       equipmentLayoutAttributes(element, elementX, elementY)
@@ -550,7 +582,7 @@ function layoutBay(
   });
 
   return {
-    rightEdge: x + bayWidth,
+    rightEdge: x + width,
     bottomEdge: y + height,
   };
 }
@@ -561,21 +593,22 @@ function layoutVoltageLevel(
   y: number,
   scopedIeds: ScopedIeds,
   builder: EditBuilder,
-  pool: ReferencePool
+  pool: ReferencePool,
+  measure: MeasureLabel
 ): Box {
   let rightEdge = x + 1;
   let bottomEdge = y + minContainerSize - 1;
   let cursorY = y + 2;
 
   const sharedIeds = scopedIeds.voltageLevels.get(voltageLevel) ?? [];
-  const iedRow = layoutIedRow(voltageLevel, sharedIeds, x, cursorY, builder, pool);
+  const iedRow = layoutIedRow(voltageLevel, sharedIeds, x, cursorY, builder, pool, measure);
   if (iedRow.height) {
     rightEdge = Math.max(rightEdge, iedRow.rightEdge);
     cursorY += iedRow.height;
     bottomEdge = Math.max(bottomEdge, cursorY);
   }
 
-  const equipmentGrid = layoutEquipmentGrid(voltageLevel, x, cursorY, builder);
+  const equipmentGrid = layoutEquipmentGrid(voltageLevel, x, cursorY, builder, measure);
   if (equipmentGrid.height) {
     rightEdge = Math.max(rightEdge, equipmentGrid.rightEdge);
     cursorY += equipmentGrid.height;
@@ -590,7 +623,8 @@ function layoutVoltageLevel(
       cursorY,
       scopedIeds.bays.get(bay) ?? [],
       builder,
-      pool
+      pool,
+      measure
     );
 
     bayX = box.rightEdge + 1;
@@ -598,7 +632,8 @@ function layoutVoltageLevel(
     bottomEdge = Math.max(bottomEdge, box.bottomEdge);
   });
 
-  const width = Math.max(minContainerSize, rightEdge - x + 1);
+  const width = Math.max(minContainerSize, rightEdge - x + 1,
+    Math.ceil(labelWidth(voltageLevel, measure)) + 1);
   const height = Math.max(minContainerSize, bottomEdge - y + 1);
 
   builder.upsertLayoutAttributes(
@@ -615,21 +650,22 @@ function layoutVoltageLevel(
 function layoutSubstation(
   substation: Element,
   builder: EditBuilder,
-  pool: ReferencePool
+  pool: ReferencePool,
+  measure: MeasureLabel
 ) {
   const scopedIeds = classifyIeds(substation);
   let rightEdge = 1;
   let bottomEdge = minContainerSize - 1;
   let cursorY = 2;
 
-  const iedRow = layoutIedRow(substation, scopedIeds.substation, 0, cursorY, builder, pool);
+  const iedRow = layoutIedRow(substation, scopedIeds.substation, 0, cursorY, builder, pool, measure);
   if (iedRow.height) {
     rightEdge = Math.max(rightEdge, iedRow.rightEdge);
     cursorY += iedRow.height;
     bottomEdge = Math.max(bottomEdge, cursorY);
   }
 
-  const equipmentGrid = layoutEquipmentGrid(substation, 0, cursorY, builder);
+  const equipmentGrid = layoutEquipmentGrid(substation, 0, cursorY, builder, measure);
   if (equipmentGrid.height) {
     rightEdge = Math.max(rightEdge, equipmentGrid.rightEdge);
     cursorY += equipmentGrid.height;
@@ -637,13 +673,14 @@ function layoutSubstation(
   }
 
   directChildrenByTag(substation, 'VoltageLevel').forEach((voltageLevel) => {
-    const box = layoutVoltageLevel(voltageLevel, 1, cursorY, scopedIeds, builder, pool);
+    const box = layoutVoltageLevel(voltageLevel, 1, cursorY, scopedIeds, builder, pool, measure);
     cursorY = box.bottomEdge + 1;
     rightEdge = Math.max(rightEdge, box.rightEdge);
     bottomEdge = Math.max(bottomEdge, box.bottomEdge);
   });
 
-  const width = Math.max(minContainerSize, rightEdge + 1);
+  const width = Math.max(minContainerSize, rightEdge + 1,
+    Math.ceil(labelWidth(substation, measure)) + 1);
   const height = Math.max(minContainerSize, bottomEdge + 1);
   const existingX = getSLDAttributes(substation, 'x');
   const existingY = getSLDAttributes(substation, 'y');
@@ -658,7 +695,7 @@ function layoutSubstation(
   });
 }
 
-export function createZeroLineLayoutEdits(doc: XMLDocument): EditV2[] {
+export function createZeroLineLayoutEdits(doc: XMLDocument, measure: MeasureLabel): EditV2[] {
   const substations = Array.from(doc.querySelectorAll(':root > Substation'));
   if (!substations.length) {
     return [];
@@ -670,7 +707,7 @@ export function createZeroLineLayoutEdits(doc: XMLDocument): EditV2[] {
   builder.ensureNamespaceDeclaration();
 
   substations.forEach((substation) => {
-    layoutSubstation(substation, builder, createReferencePool(substation));
+    layoutSubstation(substation, builder, createReferencePool(substation), measure);
   });
 
   return builder.edits;

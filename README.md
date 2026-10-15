@@ -11,6 +11,23 @@ The plugin is intended as a starting point for documents that already contain pr
 - Each bay uses three conceptual columns: one IED column and two conducting-equipment columns.
 - IED scope allocation follows the old OpenSCD zeroline `attachedIeds` logic.
 - Direct non-bay primary equipment under `VoltageLevel` or `Substation` is also placed in a second pass so transformer-heavy models still get a usable starting layout.
+- IED names are placed underneath their symbols. Measured label footprints determine
+  IED spacing, equipment column widths, row heights, and enclosing container sizes.
+
+Stored layout data follows the
+[OpenSCD SLD extension schema](https://github.com/openscd/oscd-extensions/blob/main/SSD/SLD/v0/ssd-sld-v0.xsd).
+Placement and measurement use diagram/grid units, not browser pixels or the
+editor's zoom setting. Labels are measured with native SVG text after the font
+is available, with measurements cached for each name and font size during a run.
+The current editor's default typography and label-coordinate rendering offsets
+are isolated in `src/foundation/sld-editor-foundations.ts`; layout-specific
+clearance, label placement, and conservative symbol envelopes live in
+`src/foundation/layout-geometry.ts`. No hidden editor instance is used.
+
+This remains a first-pass row/column layout, not a general collision solver.
+It assumes the editor's default fonts and does not avoid existing wires,
+free text, or other manually positioned obstacles. Custom font overrides or
+unusual transformer decorations can require manual adjustment.
 
 ## Install
 
