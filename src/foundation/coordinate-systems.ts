@@ -1,0 +1,485 @@
+import { getReference, identity } from '@openscd/scl-lib';
+import { createElement } from '@openscd/scl-lib/dist/foundation/utils.js';
+
+import { privType, sldNs, xmlnsNs } from './layout-util.js';
+
+import type { EditV2 } from '@openscd/oscd-api';
+
+export const sldV1Ns = 'https://transpower.co.nz/SCL/SSD/SLD/v0';
+export const sxyNs = 'http://www.iec.ch/61850/2003/SCLcoordinates';
+export const coordinateSystems = ['sldv1', 'sldpriv', 'sxy'] as const;
+export type CoordinateSystem = typeof coordinateSystems[number];
+
+const legacyPrivateTypes = ['Transpower-SLD-Vertices', 'OpenSCD-Linked-IEDs'];
+const layoutKeys = [
+  'x', 'y', 'w', 'h', 'rot', 'lx', 'ly', 'kind', 'flip', 'color', 'weight', 'uuid',
+];
+const plantTags = new Set([
+  'Substation', 'VoltageLevel', 'Bay', 'ConductingEquipment',
+  'PowerTransformer', 'TransformerWinding', 'ConnectivityNode',
+  'Terminal', 'NeutralPoint', 'Function', 'SubFunction', 'EqFunction', 'EqSubFunction',
+]);
+
+function allElements(doc: XMLDocument): Element[] {
+  return [doc.documentElement, ...Array.from(doc.documentElement.getElementsByTagName('*'))];
+}
+
+function namespaceSystem(namespace: string | null): CoordinateSystem | undefined {
+  switch (namespace) {
+    case sldV1Ns: return 'sldv1';
+    case sldNs: return 'sldpriv';
+    case sxyNs: return 'sxy';
+    default: return undefined;
+  }
+}
+
+function privateSystem(element: Element): CoordinateSystem | undefined {
+  if (element.localName !== 'Private' ||
+      element.namespaceURI !== element.ownerDocument.documentElement.namespaceURI) {
+    return undefined;
+  }
+  const type = element.getAttribute('type');
+  if (type === privType) {
+    return 'sldpriv';
+  }
+  if (legacyPrivateTypes.some(candidate => candidate === type)) {
+    return 'sldv1';
+  }
+  return undefined;
+}
+
+export function detectCoordinateSystems(doc: XMLDocument): Record<CoordinateSystem, number> {
+  const counts = { sldv1: 0, sldpriv: 0, sxy: 0 };
+  for (const element of allElements(doc)) {
+    const found = new Set<CoordinateSystem>();
+    const system = privateSystem(element) ?? namespaceSystem(element.namespaceURI);
+    if (system !== undefined) {
+      found.add(system);
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const system = namespaceSystem(attribute.namespaceURI);
+      if (system !== undefined) {
+        found.add(system);
+      }
+    }
+    for (const system of found) {
+      counts[system] += 1;
+    }
+  }
+  return counts;
+}
+
+export type CoordinatePlan = { edits: EditV2[]; issues: string[] };
+
+export function cleanCoordinatePlan(
+  doc: XMLDocument,
+  systems: readonly CoordinateSystem[],
+): CoordinatePlan {
+  const selected = new Set(systems);
+  const removed = new Set<Element>();
+  const edits: EditV2[] = [];
+  const issues: string[] = [];
+  const declarations: Attr[] = [];
+  const qnameNamespaces = new Set<string>();
+  for (const element of allElements(doc)) {
+    if (element.parentElement !== null && removed.has(element.parentElement)) {
+      removed.add(element);
+      continue;
+    }
+    const privateKind = privateSystem(element);
+    const system = privateKind ?? namespaceSystem(element.namespaceURI);
+    if (system !== undefined && selected.has(system)) {
+      const contents = [element, ...Array.from(element.getElementsByTagName('*'))];
+      const unrelated = contents.some(child =>
+        (child !== element && namespaceSystem(child.namespaceURI) !== system &&
+          !(system === 'sldv1' && child.localName === 'IEDName' &&
+            child.namespaceURI === doc.documentElement.namespaceURI)) ||
+        Array.from(child.attributes).some(attribute =>
+          attribute.namespaceURI !== null && attribute.namespaceURI !== xmlnsNs &&
+          namespaceSystem(attribute.namespaceURI) !== system));
+      if (unrelated || element === doc.documentElement) {
+        issues.push(`Layout data on ${element.parentElement?.localName ?? element.localName} contains unrelated content; nothing was removed.`);
+      }
+      edits.push({ node: element });
+      removed.add(element);
+      continue;
+    }
+    const attributesNS: Record<string, Record<string, null>> = {};
+    for (const attribute of Array.from(element.attributes)) {
+      const system = namespaceSystem(attribute.namespaceURI);
+      if (system !== undefined && selected.has(system) && attribute.namespaceURI !== null) {
+        attributesNS[attribute.namespaceURI] ??= {};
+        attributesNS[attribute.namespaceURI][attribute.name] = null;
+      } else if (attribute.namespaceURI === xmlnsNs) {
+        const declaredSystem = namespaceSystem(attribute.value);
+        if (declaredSystem !== undefined && selected.has(declaredSystem)) {
+          declarations.push(attribute);
+        }
+      } else {
+        recordQNames(element, attribute.value);
+      }
+    }
+    for (const child of Array.from(element.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        recordQNames(element, child.textContent ?? '');
+      }
+    }
+    if (Object.keys(attributesNS).length > 0) {
+      edits.push({ element, attributes: {}, attributesNS });
+    }
+  }
+  // XML namespace usage is gone; retain declarations referenced by QName-valued metadata.
+  for (const declaration of declarations) {
+    if (declaration.ownerElement !== null && !qnameNamespaces.has(declaration.value)) {
+      edits.push({
+        element: declaration.ownerElement,
+        attributes: {},
+        attributesNS: { [xmlnsNs]: { [declaration.name]: null } },
+      });
+    }
+  }
+  return { edits: issues.length === 0 ? edits : [], issues };
+
+  function recordQNames(element: Element, value: string): void {
+    for (const match of value.matchAll(/\b([A-Za-z_][\w.-]*):[A-Za-z_]/g)) {
+      const namespace = element.lookupNamespaceURI(match[1]);
+      if (namespace !== null) {
+        qnameNamespaces.add(namespace);
+      }
+    }
+  }
+}
+
+export type CopyPlan = CoordinatePlan & { conflicts: number; copied: number };
+
+type Destination = {
+  original?: Element;
+  node: Element;
+  changed: boolean;
+  references: Map<string, Element[]>;
+};
+
+function sameLayout(left: Element, right: Element): boolean {
+  const attributes = (element: Element) => Array.from(element.attributes)
+    .filter(attribute => attribute.namespaceURI !== xmlnsNs)
+    .map(attribute => [attribute.namespaceURI, attribute.localName, attribute.value])
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return left.namespaceURI === right.namespaceURI && left.localName === right.localName &&
+    JSON.stringify(attributes(left)) === JSON.stringify(attributes(right)) &&
+    left.children.length === right.children.length &&
+    Array.from(left.children).every((child, index) => sameLayout(child, right.children[index]));
+}
+
+function privateReference(container: Element): Node | null {
+  // scl-lib's ordering helper uses tagName; normalize prefixed SCL in a detached view.
+  const view = createElement(container.ownerDocument, container.localName, {});
+  const children = Array.from(container.children);
+  for (const child of children) {
+    view.appendChild(child.namespaceURI === container.namespaceURI
+      ? createElement(container.ownerDocument, child.localName, {}) : child.cloneNode(false));
+  }
+  const reference = getReference(view, 'Private');
+  return reference instanceof Element
+    ? children[Array.from(view.children).indexOf(reference)] : null;
+}
+
+/** Copies into detached layout sections, so planning cannot change the live document. */
+export function copySldV1Plan(doc: XMLDocument, overwrite = false): CopyPlan {
+  const issues: string[] = [];
+  let conflicts = 0;
+  let copied = 0;
+  const sclNs = doc.documentElement.namespaceURI;
+  const elements = allElements(doc);
+  const substations = elements.filter(element => element.namespaceURI === sclNs &&
+    element.localName === 'Substation' && element.parentElement === doc.documentElement);
+  const ieds = new Map<string, Element[]>();
+  const prefixes = new Set<string>();
+  for (const element of elements) {
+    for (const attribute of Array.from(element.attributes)) {
+      if (attribute.namespaceURI === xmlnsNs) {
+        prefixes.add(attribute.localName);
+      }
+    }
+    if (element.namespaceURI === sclNs && element.localName === 'IED' &&
+        element.parentElement === doc.documentElement) {
+      const name = element.getAttribute('name') ?? '';
+      ieds.set(name, [...(ieds.get(name) ?? []), element]);
+    }
+  }
+  let prefix = 'eosld';
+  let suffix = 1;
+  while (prefixes.has(prefix)) {
+    prefix = `eosld${suffix++}`;
+  }
+  const destinations = new Map<Element, Destination>();
+  const handled = new Set<Element>();
+  const linkedNames = new Set<string>();
+  const copiedReferences = new Map<Element, Set<string>>();
+  const copiedSections = new Set<Element>();
+
+  function extension(localName: string): Element {
+    return doc.createElementNS(sldNs, `${prefix}:${localName}`);
+  }
+
+  function destination(container: Element): Destination | undefined {
+    const cached = destinations.get(container);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const existing = Array.from(container.children).filter(child =>
+      child.namespaceURI === sclNs && child.localName === 'Private' &&
+      child.getAttribute('type') === privType);
+    if (existing.length > 1) {
+      issues.push(`Multiple SLD Private sections on ${container.localName} ${container.getAttribute('name') ?? ''}.`);
+      return undefined;
+    }
+    const original = existing[0];
+    const clone = original?.cloneNode(true);
+    const node = clone instanceof Element ? clone : createElement(doc, 'Private', { type: privType });
+    const references = new Map<string, Element[]>();
+    for (const child of Array.from(node.children)) {
+      if (child.namespaceURI === sldNs && child.localName === 'Reference' &&
+          child.getAttributeNS(sldNs, 'type') === 'IED') {
+        const id = child.getAttributeNS(sldNs, 'id') ?? '';
+        references.set(id, [...(references.get(id) ?? []), child]);
+      }
+    }
+    const result = { original, node, changed: false, references };
+    destinations.set(container, result);
+    return result;
+  }
+
+  function writeAttributes(parent: Element, source: Element, target: Destination): void {
+    const values = Array.from(source.attributes).filter(attribute =>
+      attribute.namespaceURI === sldV1Ns && layoutKeys.includes(attribute.localName));
+    if (values.length === 0) {
+      return;
+    }
+    const existing = Array.from(parent.children).filter(child =>
+      child.namespaceURI === sldNs && child.localName === 'SLDAttributes');
+    if (existing.length > 1) {
+      issues.push('Multiple SLDAttributes destinations; resolve duplicates before copying.');
+      return;
+    }
+    if (existing.length > 0) {
+      conflicts += 1;
+      if (!overwrite) {
+        return;
+      }
+    }
+    const node = existing[0] ?? extension('SLDAttributes');
+    let changed = existing.length === 0;
+    for (const attribute of values) {
+      if (node.getAttributeNS(sldNs, attribute.localName) !== attribute.value) {
+        node.setAttributeNS(sldNs, `${prefix}:${attribute.localName}`, attribute.value);
+        changed = true;
+      }
+    }
+    if (existing.length === 0) {
+      parent.appendChild(node);
+    }
+    target.changed ||= changed;
+    copied += 1;
+  }
+
+  function copyIed(source: Element, container: Element, name: string): void {
+    if (!Array.from(source.attributes).some(attribute =>
+      attribute.namespaceURI === sldV1Ns && layoutKeys.includes(attribute.localName))) {
+      return;
+    }
+    const matches = ieds.get(name) ?? [];
+    if (name === '' || matches.length !== 1) {
+      issues.push(`Cannot uniquely resolve legacy IED "${name}".`);
+      return;
+    }
+    // identity() dispatches on tagName, so use a prefix-free view of the root IED.
+    const iedView = createElement(doc, 'IED', { name });
+    createElement(doc, 'SCL', {}).appendChild(iedView);
+    const id = String(identity(iedView));
+    const seen = copiedReferences.get(container) ?? new Set<string>();
+    if (seen.has(id)) {
+      issues.push(`Multiple legacy placements for IED "${name}" in the same container.`);
+      return;
+    }
+    seen.add(id);
+    copiedReferences.set(container, seen);
+    const target = destination(container);
+    if (target === undefined) {
+      return;
+    }
+    const references = target.references.get(id) ?? [];
+    if (references.length > 1) {
+      issues.push(`Duplicate destination references for IED "${name}".`);
+      return;
+    }
+    const reference = references[0] ?? extension('Reference');
+    if (references.length === 0) {
+      reference.setAttributeNS(sldNs, `${prefix}:id`, id);
+      reference.setAttributeNS(sldNs, `${prefix}:type`, 'IED');
+      target.node.appendChild(reference);
+      target.references.set(id, [reference]);
+    }
+    writeAttributes(reference, source, target);
+  }
+
+  function validateAttributes(element: Element, allowed: readonly string[]): void {
+    const unknown = Array.from(element.attributes).filter(attribute =>
+      attribute.namespaceURI === sldV1Ns && !allowed.includes(attribute.localName));
+    if (unknown.length > 0) {
+      issues.push(`Unsupported SLDv1 attributes on ${element.localName}: ${unknown.map(attribute => attribute.localName).join(', ')}.`);
+    }
+  }
+
+  for (const element of elements.filter(candidate =>
+    privateSystem(candidate) === 'sldv1' &&
+    candidate.getAttribute('type') === 'OpenSCD-Linked-IEDs')) {
+    handled.add(element);
+    validateAttributes(element, []);
+    for (const child of Array.from(element.children)) {
+      handled.add(child);
+      const name = child.getAttributeNS(sldV1Ns, 'name');
+      validateAttributes(child, [...layoutKeys, 'name']);
+      if (child.localName === 'IEDName' &&
+          (child.namespaceURI === sclNs || child.namespaceURI === sldV1Ns) &&
+          name !== null && child.children.length === 0 && element.parentElement !== null &&
+          element.parentElement.namespaceURI === sclNs &&
+          ['Substation', 'VoltageLevel', 'Bay'].includes(element.parentElement.localName)) {
+        linkedNames.add(name);
+        copyIed(child, element.parentElement, name);
+      } else {
+        issues.push('Unsupported entry or container in OpenSCD-Linked-IEDs.');
+      }
+    }
+  }
+  for (const source of elements.filter(element =>
+    privateSystem(element) === 'sldv1' &&
+    element.getAttribute('type') === 'Transpower-SLD-Vertices')) {
+    handled.add(source);
+    validateAttributes(source, []);
+    const container = source.parentElement;
+    if (container === null || container.localName !== 'ConnectivityNode' ||
+        container.namespaceURI !== sclNs || copiedSections.has(container)) {
+      issues.push('Ambiguous or unsupported Transpower-SLD-Vertices container.');
+      continue;
+    }
+    copiedSections.add(container);
+    const target = destination(container);
+    if (target === undefined) {
+      continue;
+    }
+    const converted: Element[] = [];
+    for (const section of Array.from(source.children)) {
+      handled.add(section);
+      if (section.namespaceURI !== sldV1Ns || section.localName !== 'Section') {
+        issues.push('Unsupported content in Transpower-SLD-Vertices.');
+        continue;
+      }
+      const node = extension('Section');
+      for (const attribute of Array.from(section.attributes)) {
+        if (attribute.namespaceURI === xmlnsNs) {
+          continue;
+        }
+        if ((attribute.namespaceURI === null && attribute.localName === 'bus') ||
+            attribute.namespaceURI === sldV1Ns) {
+          node.setAttributeNS(sldNs, `${prefix}:${attribute.localName}`, attribute.value);
+        } else {
+          issues.push('Unsupported attribute on a legacy connectivity section.');
+        }
+      }
+      for (const vertex of Array.from(section.children)) {
+        handled.add(vertex);
+        if (vertex.namespaceURI !== sldV1Ns || vertex.localName !== 'Vertex' ||
+            vertex.children.length > 0) {
+          issues.push('Unsupported connectivity vertex.');
+          continue;
+        }
+        const copy = extension('Vertex');
+        for (const attribute of Array.from(vertex.attributes)) {
+          if (attribute.namespaceURI === sldV1Ns) {
+            copy.setAttributeNS(sldNs, `${prefix}:${attribute.localName}`, attribute.value);
+          } else if (attribute.namespaceURI !== xmlnsNs) {
+            issues.push('Unsupported attribute on a legacy connectivity vertex.');
+          }
+        }
+        node.appendChild(copy);
+      }
+      converted.push(node);
+    }
+    const existing = Array.from(target.node.children).filter(child =>
+      child.namespaceURI === sldNs && child.localName === 'Section');
+    if (existing.length > 0) {
+      conflicts += 1;
+      if (!overwrite) {
+        continue;
+      }
+    }
+    if (converted.length > 0) {
+      copied += converted.length;
+      if (existing.length === converted.length &&
+          existing.every((section, index) => sameLayout(section, converted[index]))) {
+        continue;
+      }
+      if (existing.some(section => [section, ...Array.from(section.getElementsByTagName('*'))]
+        .some(child => child.namespaceURI !== sldNs ||
+          Array.from(child.attributes).some(attribute => attribute.namespaceURI !== sldNs &&
+            attribute.namespaceURI !== xmlnsNs)))) {
+        issues.push('Destination connectivity sections contain unrelated content; overwrite was blocked.');
+        continue;
+      }
+      for (const section of existing) {
+        section.remove();
+      }
+      target.node.append(...converted);
+      target.changed = true;
+    }
+  }
+  for (const element of elements) {
+    if (handled.has(element)) {
+      continue;
+    }
+    const attributes = Array.from(element.attributes).filter(attribute => attribute.namespaceURI === sldV1Ns);
+    if (attributes.length === 0 && element.namespaceURI !== sldV1Ns) {
+      continue;
+    }
+    validateAttributes(element, layoutKeys);
+    if (element.namespaceURI !== sclNs) {
+      issues.push(`Unsupported SLDv1 coordinate owner: ${element.localName}.`);
+    } else if (element.localName === 'IED' && element.parentElement === doc.documentElement) {
+      const name = element.getAttribute('name') ?? '';
+      if (linkedNames.has(name)) {
+        issues.push(`IED "${name}" has both direct and linked legacy coordinates; choose a source first.`);
+      } else if (substations.length !== 1) {
+        issues.push(`Direct legacy IED "${name}" needs exactly one Substation for unambiguous placement.`);
+      } else {
+        copyIed(element, substations[0], name);
+      }
+    } else if (plantTags.has(element.localName)) {
+      const target = destination(element);
+      if (target !== undefined) {
+        writeAttributes(target.node, element, target);
+      }
+    } else {
+      issues.push(`Unsupported SLDv1 coordinate owner: ${element.localName}.`);
+    }
+  }
+  const edits: EditV2[] = [];
+  for (const [container, target] of destinations) {
+    if (!target.changed) {
+      continue;
+    }
+    const reference = target.original !== undefined
+      ? target.original.nextSibling : privateReference(container);
+    if (target.original !== undefined) {
+      edits.push({ node: target.original });
+    }
+    edits.push({ parent: container, node: target.node, reference });
+  }
+  if (edits.length > 0) {
+    edits.unshift({
+      element: doc.documentElement,
+      attributes: {},
+      attributesNS: { [xmlnsNs]: { [`xmlns:${prefix}`]: sldNs } },
+    });
+  }
+  return { edits: issues.length === 0 ? edits : [], conflicts, copied, issues };
+}

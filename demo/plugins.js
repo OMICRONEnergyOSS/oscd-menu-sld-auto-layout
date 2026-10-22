@@ -42,6 +42,18 @@ export const plugins = {
       requireDoc: true,
       tagName: 'oscd-menu-sld-positioner',
     },
+    {
+      name: 'Copy SLDv1 to SLD Private',
+      icon: 'content_copy',
+      requireDoc: true,
+      tagName: 'oscd-menu-copy-sldv1-sldpriv',
+    },
+    {
+      name: 'SLD Coords cleaner',
+      icon: 'delete_sweep',
+      requireDoc: true,
+      tagName: 'oscd-menu-sld-coords-cleaner',
+    },
   ],
   editor: [
     {

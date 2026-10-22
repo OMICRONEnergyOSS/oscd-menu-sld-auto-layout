@@ -30,6 +30,57 @@ It assumes the editor's default fonts and does not avoid existing wires,
 free text, or other manually positioned obstacles. Custom font overrides or
 unusual transformer decorations can require manual adjustment.
 
+## Coordinate tools
+
+Two additional, independent menu plugins are included. They do not automatically
+synchronize competing coordinate systems or change auto-layout behavior.
+
+| Plugin | Package export / browser bundle |
+| --- | --- |
+| SLD positioner | `oscd-menu-sld-positioner.js` |
+| Copy SLDv1 to SLD Private | `oscd-menu-copy-sldv1-sldpriv.js` |
+| SLD Coords cleaner | `oscd-menu-sld-coords-cleaner.js` |
+
+The copier retains all Transpower SLDv1 source data, including legacy linked
+IED placements and connectivity vertices. One unchecked checkbox controls
+**all** conflicts: leave it unchecked to skip every existing destination layout
+record, or check it to overwrite every matching record. Destination-only
+attributes are retained; overwritten connectivity paths are replaced as a set.
+The dialog reports the number of conflicting records, not individual attributes.
+Ambiguous IED placements, duplicate destinations, and unsupported source data
+block the operation with an explanation instead of guessing or partially copying.
+
+The cleaner detects SLDv1, SLD Private, and IEC SXY data by namespace URI.
+Detected systems are enabled but initially unchecked. Selecting every detected
+system requires the additional acknowledgment:
+“Are you sure? Removing all coordinates means nothing will appear on the SLD
+Designer canvas”. Changing the selection resets that acknowledgment.
+Selected layout attributes and Private sections are removed; vendor data and
+unselected systems are retained. The cleaner closes after successful removal.
+Mixed unrelated content inside a layout section
+blocks removal rather than being discarded. Unused selected namespace
+declarations are removed, but declarations referenced by QName metadata remain.
+
+Each operation is one undoable EditV2 transaction. A changed document or
+`docVersion` invalidates an open confirmation; close and reopen the plugin.
+Reverse copying and SXY conversion are not implemented.
+
+Register the additional plugins in the host's scoped registry just like
+auto-layout, using their default class exports:
+
+```js
+import OscdMenuCopySldv1Sldpriv from
+  '@omicronenergy/oscd-menu-coord-tools/oscd-menu-copy-sldv1-sldpriv.js';
+import OscdMenuSldCoordsCleaner from
+  '@omicronenergy/oscd-menu-coord-tools/oscd-menu-sld-coords-cleaner.js';
+
+shell.registry.define('oscd-menu-copy-sldv1-sldpriv', OscdMenuCopySldv1Sldpriv);
+shell.registry.define('oscd-menu-sld-coords-cleaner', OscdMenuSldCoordsCleaner);
+```
+
+Add corresponding menu entries with `requireDoc: true` and these `tagName`
+values. Both are already registered in the demo.
+
 ## Install
 
 ```sh
@@ -111,9 +162,11 @@ also includes the compatible SLD editor.
 excludes demo output, tests, snapshots, and source maps. Build before manual
 publication and inspect contents with `npm pack --dry-run`.
 
-`npm run bundle` produces the standalone entry and static demo under `dist`.
-`npm run deploy` publishes that existing output to the `deploy` branch of
-the configured Git remote; it does not build first. This command writes to
+`npm run bundle` produces three independent, single-file plugin bundles and
+the static demo under `dist`. The thin local Rollup config extends the shared
+configuration only to add the two entry points.
+`npm run deploy` bundles first, then publishes the output to the `deploy`
+branch of the configured Git remote. This command writes to
 the remote and should only be run intentionally against the canonical repo.
 
 ### Shared automation

@@ -15,6 +15,8 @@
   import OscdEditorSource from '@omicronenergy/oscd-editor-source';
   import OscdEditorSld from '@omicronenergy/oscd-editor-sld';
   import OscdMenuSldPositioner from '../dist/oscd-menu-sld-positioner.js';
+  import OscdMenuCopySldv1Sldpriv from '../dist/oscd-menu-copy-sldv1-sldpriv.js';
+  import OscdMenuSldCoordsCleaner from '../dist/oscd-menu-sld-coords-cleaner.js';
   import {
   OscdMenuFileClose,
   OscdMenuOpen,
@@ -31,6 +33,8 @@
   oscdShell.registry.define('oscd-editor-source', OscdEditorSource);
   oscdShell.registry.define('oscd-editor-sld', OscdEditorSld);
   oscdShell.registry.define('oscd-menu-sld-positioner', OscdMenuSldPositioner);
+  oscdShell.registry.define('oscd-menu-copy-sldv1-sldpriv', OscdMenuCopySldv1Sldpriv);
+  oscdShell.registry.define('oscd-menu-sld-coords-cleaner', OscdMenuSldCoordsCleaner);
   oscdShell.plugins = plugins;
 
 const params = new URL(document.location).searchParams;

@@ -41,6 +41,14 @@
     "./oscd-menu-sld-positioner.js": {
       "types": "./dist/oscd-menu-sld-positioner.d.ts",
       "default": "./dist/oscd-menu-sld-positioner.js"
+    },
+    "./oscd-menu-copy-sldv1-sldpriv.js": {
+      "types": "./dist/oscd-menu-copy-sldv1-sldpriv.d.ts",
+      "default": "./dist/oscd-menu-copy-sldv1-sldpriv.js"
+    },
+    "./oscd-menu-sld-coords-cleaner.js": {
+      "types": "./dist/oscd-menu-sld-coords-cleaner.d.ts",
+      "default": "./dist/oscd-menu-sld-coords-cleaner.js"
     }
   },
   "scripts": {
@@ -58,19 +66,22 @@
     "prepare": "oscd install-hooks"
   },
   "dependencies": {
+    "@lit/localize": "^0.12.2",
     "@omicronenergy/oscd-editor-sld": "^1.0.0",
     "@omicronenergy/oscd-editor-source": "^0.0.5",
     "@omicronenergy/oscd-menu-commons": "^0.0.2",
     "@omicronenergy/oscd-shell": "^0.0.18",
+    "@omicronenergy/oscd-ui": "^0.1.1",
+    "@open-wc/scoped-elements": "^3.0.10",
     "@openscd/oscd-api": "^0.1.6",
     "@openscd/scl-lib": "^2.0.1",
     "@webcomponents/scoped-custom-element-registry": "^0.0.10",
+    "lit": "^3.3.3",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@omicronenergy/oscd-tooling": "^0.0.6",
     "@open-wc/testing": "^5.0.0",
-    "@openscd/oscd-editor": "^1.8.0",
-    "lit": "^3.3.3"
+    "@openscd/oscd-editor": "^1.8.0"
   }
 }
