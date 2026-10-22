@@ -4,7 +4,7 @@ import { html } from 'lit';
 import { XMLEditor } from '@openscd/oscd-editor';
 import type { EditEventV2 } from '@openscd/oscd-api';
 
-import OscdMenuSldAutoLayout from './oscd-menu-sld-auto-layout.js';
+import OscdMenuSldPositioner from './oscd-menu-sld-positioner.js';
 import { getSLDAttributes, iedReferences, resolveIed, sldNs } from './foundation/layout-util.js';
 
 const zeroLineDocString = `<?xml version="1.0" encoding="UTF-8"?>
@@ -88,12 +88,12 @@ const priorArtDocString = `<?xml version="1.0" encoding="UTF-8"?>
   <IED name="IED-CROSS"/>
 </SCL>`;
 
-if (!customElements.get('oscd-menu-sld-auto-layout')) {
-  customElements.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
+if (!customElements.get('oscd-menu-sld-positioner')) {
+  customElements.define('oscd-menu-sld-positioner', OscdMenuSldPositioner);
 }
 
-describe('Menu SLD auto layout', () => {
-  let element: OscdMenuSldAutoLayout;
+describe('Menu SLD positioner', () => {
+  let element: OscdMenuSldPositioner;
   let xmlEditor: XMLEditor;
 
   beforeEach(async () => {
@@ -104,12 +104,12 @@ describe('Menu SLD auto layout', () => {
 
     xmlEditor = new XMLEditor();
     element = await fixture(
-      html`<oscd-menu-sld-auto-layout
+      html`<oscd-menu-sld-positioner
         .doc=${doc}
         @oscd-edit-v2=${(event: EditEventV2) => {
           xmlEditor.commit(event.detail.edit);
         }}
-      ></oscd-menu-sld-auto-layout>`
+      ></oscd-menu-sld-positioner>`
     );
   });
 
@@ -185,12 +185,12 @@ describe('Menu SLD auto layout', () => {
     );
 
     element = await fixture(
-      html`<oscd-menu-sld-auto-layout
+      html`<oscd-menu-sld-positioner
         .doc=${doc}
         @oscd-edit-v2=${(event: EditEventV2) => {
           xmlEditor.commit(event.detail.edit);
         }}
-      ></oscd-menu-sld-auto-layout>`
+      ></oscd-menu-sld-positioner>`
     );
 
     await element.run();

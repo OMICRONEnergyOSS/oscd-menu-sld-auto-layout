@@ -34,13 +34,13 @@ export const plugins = {
       ],
     },
     {
-      name: 'Auto layout SLD',
+      name: 'Auto-position SLD elements',
       translations: {
         de: 'SLD automatisch layouten',
       },
       icon: 'account_tree',
       requireDoc: true,
-      tagName: 'oscd-menu-sld-auto-layout',
+      tagName: 'oscd-menu-sld-positioner',
     },
   ],
   editor: [

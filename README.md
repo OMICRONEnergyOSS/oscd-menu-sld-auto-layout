@@ -1,8 +1,9 @@
-# oscd-menu-sld-auto-layout
+# oscd-menu-coord-tools
 
-Menu plugin for OpenSCD and `oscd-shell` that generates a first-pass zero-line single line diagram layout for existing `Substation` sections.
+OpenSCD menu plugins for positioning, copying, and cleaning SLD coordinates.
 
-The plugin is intended as a starting point for documents that already contain primary plant data but do not yet contain SLD coordinates.
+The positioner is intended as a starting point for documents that already
+contain primary plant data but do not yet contain SLD coordinates.
 
 ## Behavior
 
@@ -32,25 +33,25 @@ unusual transformer decorations can require manual adjustment.
 ## Install
 
 ```sh
-npm install @omicronenergy/oscd-menu-sld-auto-layout
+npm install @omicronenergy/oscd-menu-coord-tools
 ```
 
 ## Register in oscd-shell
 
 ```js
-import OscdMenuSldAutoLayout from '@omicronenergy/oscd-menu-sld-auto-layout';
+import OscdMenuSldPositioner from '@omicronenergy/oscd-menu-coord-tools';
 
 const shell = document.querySelector('oscd-shell');
-shell.registry.define('oscd-menu-sld-auto-layout', OscdMenuSldAutoLayout);
+shell.registry.define('oscd-menu-sld-positioner', OscdMenuSldPositioner);
 
 export const plugins = {
   menu: [
     {
-      name: 'Auto layout SLD',
+      name: 'Auto-position SLD elements',
       translations: { de: 'SLD automatisch layouten' },
       icon: 'account_tree',
       requireDoc: true,
-      tagName: 'oscd-menu-sld-auto-layout',
+      tagName: 'oscd-menu-sld-positioner',
     },
   ],
   editor: [],
@@ -95,12 +96,12 @@ is not compatible with this output format.
 
 ## Packaging and deployment
 
-The canonical repository is
-[`OMICRONEnergyOSS/oscd-menu-sld-auto-layout`](https://github.com/OMICRONEnergyOSS/oscd-menu-sld-auto-layout).
+The intended canonical repository is
+[`OMICRONEnergyOSS/oscd-menu-coord-tools`](https://github.com/OMICRONEnergyOSS/oscd-menu-coord-tools).
 The configured Pages endpoints, once deployed, are:
 
-- Plugin: `https://omicronenergyoss.github.io/oscd-menu-sld-auto-layout/oscd-menu-sld-auto-layout.js`
-- Demo: `https://omicronenergyoss.github.io/oscd-menu-sld-auto-layout/demo/?doc=sample.scd`
+- Plugin: `https://omicronenergyoss.github.io/oscd-menu-coord-tools/oscd-menu-sld-positioner.js`
+- Demo: `https://omicronenergyoss.github.io/oscd-menu-coord-tools/demo/?doc=sample.scd`
 
 Use the plugin URL as a menu plugin's `src` in hosts supporting sourced
 plugins. The standalone bundle contains its runtime imports; the bundled demo
@@ -142,7 +143,7 @@ The workflow callers use `OMICRONEnergyOSS/oscd-gh-workflows`:
    For an unpublished package, an authorized maintainer may need to bootstrap
    the first publication before configuring its trusted publisher.
 5. Configure npm's GitHub Actions trusted publisher for owner
-   `OMICRONEnergyOSS`, repository `oscd-menu-sld-auto-layout`, and workflow
+   `OMICRONEnergyOSS`, repository `oscd-menu-coord-tools`, and workflow
    `release-please.yml` (the caller, not the reusable workflow's repository).
    Both caller and shared publishing job grant `id-token: write`, as required
    by npm's [trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).

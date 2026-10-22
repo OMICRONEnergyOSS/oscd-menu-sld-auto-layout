@@ -3,7 +3,7 @@ import { newEditEventV2 } from '@openscd/oscd-api/utils.js';
 import { createZeroLineLayoutEdits } from './foundation/autolayout.js';
 import { prepareLabelMeasurement } from './foundation/layout-geometry.js';
 
-export default class OscdMenuSldAutoLayout extends HTMLElement {
+export default class OscdMenuSldPositioner extends HTMLElement {
   doc!: XMLDocument;
 
   async run(): Promise<void> {
@@ -23,7 +23,7 @@ export default class OscdMenuSldAutoLayout extends HTMLElement {
 
     this.dispatchEvent(
       newEditEventV2(edits, {
-        title: 'Auto layout SLD',
+        title: 'Auto-position SLD elements',
         squash: false,
       })
     );

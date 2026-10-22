@@ -1,16 +1,16 @@
 {
-  "name": "@omicronenergy/oscd-menu-sld-auto-layout",
-  "description": "OpenSCD menu plugin that generates a zero-line SLD layout for existing Substation sections",
+  "name": "@omicronenergy/oscd-menu-coord-tools",
+  "description": "OpenSCD menu plugins for SLD coordinate positioning, copying, and cleanup",
   "license": "Apache-2.0",
   "author": "OMICRON electronics GmbH",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OMICRONEnergyOSS/oscd-menu-sld-auto-layout.git"
+    "url": "git+https://github.com/OMICRONEnergyOSS/oscd-menu-coord-tools.git"
   },
   "bugs": {
-    "url": "https://github.com/OMICRONEnergyOSS/oscd-menu-sld-auto-layout/issues"
+    "url": "https://github.com/OMICRONEnergyOSS/oscd-menu-coord-tools/issues"
   },
-  "homepage": "https://omicronenergyoss.github.io/oscd-menu-sld-auto-layout/demo/",
+  "homepage": "https://omicronenergyoss.github.io/oscd-menu-coord-tools/demo/",
   "keywords": [
     "OpenSCD",
     "IEC61850",
@@ -35,12 +35,12 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/oscd-menu-sld-auto-layout.d.ts",
-      "default": "./dist/oscd-menu-sld-auto-layout.js"
+      "types": "./dist/oscd-menu-sld-positioner.d.ts",
+      "default": "./dist/oscd-menu-sld-positioner.js"
     },
-    "./oscd-menu-sld-auto-layout.js": {
-      "types": "./dist/oscd-menu-sld-auto-layout.d.ts",
-      "default": "./dist/oscd-menu-sld-auto-layout.js"
+    "./oscd-menu-sld-positioner.js": {
+      "types": "./dist/oscd-menu-sld-positioner.d.ts",
+      "default": "./dist/oscd-menu-sld-positioner.js"
     }
   },
   "scripts": {
